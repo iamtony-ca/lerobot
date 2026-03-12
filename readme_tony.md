@@ -153,6 +153,34 @@ lerobot-train \
 --save_freq=10000 \
 --steps=100000
 
+lerobot-train \
+--dataset.repo_id=${HF_USER}/pick_and_place_omx \
+--policy.type=act \
+--output_dir=outputs/train/omx_act_policy50 \
+--job_name=act_pick_and_place_omx \
+--policy.device=cuda \
+--wandb.enable=true \
+--policy.repo_id=${HF_USER}/omx_act_policy50 \
+--batch_size=8 \
+--save_checkpoint=true \
+--save_freq=10000 \
+--steps=100000
+
+lerobot-train \
+--dataset.repo_id=${HF_USER}/pick_and_place_omx \
+--policy.type=act \
+--output_dir=outputs/train/omx_act_policy50 \
+--job_name=act_pick_and_place_omx \
+--policy.device=cuda \
+--wandb.enable=true \
+--policy.repo_id=${HF_USER}/omx_act_policy50 \
+--batch_size=4 \
+--policy.use_amp=true \
+--save_checkpoint=true \
+--save_freq=10000 \
+--steps=100000
+
+
 ### resume for checkpoint
 python -m lerobot.scripts.train \
 --config_path=outputs/train/omx_act_policy/checkpoints/last/pretrained_model/
