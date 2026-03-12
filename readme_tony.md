@@ -166,6 +166,7 @@ lerobot-train \
 --save_freq=10000 \
 --steps=100000
 
+rm -rf outputs/train/omx_act_policy50
 lerobot-train \
 --dataset.repo_id=${HF_USER}/pick_and_place_omx \
 --policy.type=act \
@@ -229,6 +230,21 @@ python -m lerobot.async_inference.robot_client \
 --aggregate_fn_name=weighted_average \
 --debug_visualize_queue_size=True
 
+
+python -m lerobot.async_inference.robot_client \
+--robot.type=omx_follower \
+--robot.port=/dev/omx_follower \
+--robot.id=omx_follower_arm \
+--robot.cameras="{front: {type: opencv, index_or_path: 2, width: 640, height: 480, fps: 30, fourcc: MJPG}, wrist: {type: opencv, index_or_path: 4, width: 640, height: 480, fps: 30, fourcc: MJPG}}" \
+--task="Pick up Doll" \
+--server_address=127.0.0.1:8000 \
+--policy_type=act \
+--pretrained_name_or_path=iamtony-ca/omx_act_policy50 \
+--policy_device=cuda \
+--actions_per_chunk=70 \
+--chunk_size_threshold=0.6 \
+--aggregate_fn_name=weighted_average \
+--debug_visualize_queue_size=True
 
 
 
