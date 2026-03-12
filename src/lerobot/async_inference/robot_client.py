@@ -47,6 +47,10 @@ import draccus
 import grpc
 import torch
 
+## add 260312
+from lerobot.robots.omx_follower.omx_follower import OmxFollowerConfig
+## done
+
 from lerobot.cameras.opencv.configuration_opencv import OpenCVCameraConfig  # noqa: F401
 from lerobot.cameras.realsense.configuration_realsense import RealSenseCameraConfig  # noqa: F401
 from lerobot.robots import (
@@ -73,6 +77,7 @@ from .helpers import (
     map_robot_keys_to_lerobot_features,
     visualize_action_queue_size,
 )
+
 
 
 class RobotClient:
