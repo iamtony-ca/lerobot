@@ -262,6 +262,10 @@ python -m lerobot.async_inference.robot_client \
 --debug_visualize_queue_size=True
 
 
+#### succeed inference
+python -m lerobot.async_inference.robot_client --robot.type=omx_follower --robot.port=/dev/omx_follower --robot.id=omx_follower_arm --robot.cameras="{front: {type: opencv, index_or_path: 2, width: 640, height: 480, fps: 30, fourcc: MJPG}, wrist: {type: opencv, index_or_path: 4, width: 640, height: 480, fps: 30, fourcc: MJPG}}" --task=${HF_USER}/omx_act_policy50 --server_address=127.0.0.1:8000 --policy_type=act --pretrained_name_or_path=${HF_USER}/omx_act_policy50 --policy_device=cuda --actions_per_chunk=70 --chunk_size_threshold=0.6 --aggregate_fn_name=weighted_average --debug_visualize_queue_size=True
+
+
 
 # memo
 performance : svla, pi0, groot nx > act 
