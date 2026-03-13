@@ -286,5 +286,5 @@ python -m lerobot.async_inference.robot_client --robot.type=omx_follower --robot
 
 
 # memo
-performance : svla, pi0, groot nx > act 
+performance : svla, pi0, groot nx > act /// groot n1x > svla > act -> but, when it comes to simple single task, act >= svla.
 raw dataset is the same but cli is different after record
