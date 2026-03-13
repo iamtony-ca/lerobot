@@ -119,6 +119,8 @@ lerobot-replay \
 --dataset.episode=3
 
 
+pip install grpcio grpcio-tools
+
 ## train (act)
 lerobot-train \
 --dataset.repo_id=iamtony-ca/record-test \
