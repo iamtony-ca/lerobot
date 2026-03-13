@@ -199,11 +199,14 @@ lerobot-train \
 --steps=100000
 
 
-### resume for checkpoint
+### resume train for checkpoint
 python -m lerobot.scripts.train \
 --config_path=outputs/train/omx_act_policy/checkpoints/last/pretrained_model/
 train_config.json \
 --resume=true
+
+### upload to hf w cli
+huggingface-cli upload ${HF_USER}/omx_act_policy100 outputs/train/omx_act_policy100/checkpoints/100000/pretrained_model .
 
 
 ## inference
