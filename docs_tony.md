@@ -112,7 +112,6 @@
 **향후 개선 방향 (Action Items):**
 1. **환경 변화에 대한 강인성 확보 (Data Augmentation):** LeRobot 학습 `config`에 `image_transforms` 파이프라인을 구축하여 조명 및 카메라 노이즈에 대한 과적합을 방지합니다.
 2. **비동기 추론 파라미터 미세 튜닝:** Jittering 및 지연 보상을 최적화하기 위해, 실제 로봇 모터의 응답성에 맞춰 Action Chunking의 앙상블 가중치를 재조정합니다.
-3. **ROS 2 및 BehaviorTree.CPP 시스템 통합:** 단일 태스크에 머물고 있는 현재의 Python 비동기 추론 클라이언트를 C++ 기반의 **ROS 2 Action Server**로 래핑합니다. 이를 통해 Nav2 이동, 환경 인지, ACT 매니퓰레이션이 BehaviorTree 위에서 하나의 자율 행동 트리로 유기적으로 결합된 모바일 매니퓰레이션 시스템을 완성합니다.
 
 ---
 
