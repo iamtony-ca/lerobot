@@ -1,5 +1,89 @@
 # LeRobot 기반 OMX 로봇의 ACT 알고리즘 적용 및 Imitation Learning(Imitation Learning) 트러블슈팅 리뷰
 
+**목적:** 본 문서는 LeRobot 프레임워크와 실물 OMX 로봇을 활용하여 'Pick and Place' Task를 수행하는 과정에서 발생한 Imitation Learning(Imitation Learning)의 한계점과 극복 과정을 ACT(Action Chunking with Transformers) 알고리즘의 심층적인 이론적 배경을 바탕으로 분석합니다.
+
+---
+
+## 1. 시스템 파이프라인 및 데이터 수집 전략
+
+본 테스트는 Mobile ALOHA 시스템의 End-to-End Imitation Learning 파이프라인을 실물 로봇에 적용하여 진행되었습니다.
+
+* **하드웨어 구성:** OMX 로봇(Leader-Follower 양팔 원격 조작 시스템), 2D RGB 카메라 2대(전면, 손목).
+* **소프트웨어 스택:** LeRobot 프레임워크, ACT(Action Chunking with Transformers) 정책, 비동기 추론 서버-클라이언트 아키텍처.
+* **커리큘럼 기반 데이터 수집 (총 100 Episodes):**
+  * **Phase 1 (초기 50개):** Goal Target(흰색 그릇)의 위치는 고정하고, Pick 대상(인형)의 위치만 랜덤하게 변경하여 수집.
+  * **Phase 2 (후기 50개):** Goal Target과 인형의 위치를 모두 랜덤하게 변경하며 수집. (이 중 25개는 밝은 조명, 25개는 덜 밝은 조명 환경에서 수집).
+
+---
+
+## 2. 테스트 케이스 분석: 실패와 극복의 이론적 고찰
+
+### Case 1: 공간적 Overfitting에 의한 Place 실패 (50 Ep 모델)
+* **상황:** 초기 50개 데이터로 학습된 모델. 추론 시 인형의 위치 변경에는 대응해 Pick을 성공했으나, 흰색 그릇(Goal)의 위치를 변경하자 시각적 위치를 무시하고 원래 그릇이 있던 '허공'에 인형을 놓음.
+* **이론적 분석:** 딥러닝 모델은 목적 함수(Loss)를 최소화하기 위해 가장 쉬운 지름길(Shortcut Learning)을 택하는 본질적 특성을 갖습니다. 데이터셋 내에서 그릇의 위치 분산(Variance)이 $0$이었기 때문에, ACT의 Transformer 디코더는 카메라이미지 내 '그릇의 형태'에 어텐션(Attention) 가중치를 부여하는 대신, 로봇의 현재 관절 상태(Proprioception)와 시간의 흐름만으로 목표 좌표를 암기해버리는 **공간적 Overfitting(Spatial Overfitting)**을 일으켰습니다. 이는 인과관계(Causality)가 아닌 **허위 상관관계(Spurious Correlation)**가 학습된 전형적인 사례입니다.
+* **시사점:** 데이터 수집 환경을 설계할 때, 로봇이 인지하고 상호작용해야 하는 **모든 타겟 객체에는 반드시 물리적 위치 변동성(Randomization)을 부여**하여 Vision Backbone이 픽셀의 의미론적(Semantic) 특징을 강제로 추출하도록 유도해야 합니다.
+
+### Case 2: 기하학적 모호성에 의한 Pick 조기 실패 (50 Ep 모델)
+* **상황:** 평면($X, Y$) 위치는 찾아갔으나, 깊이($Z$)를 정확히 파악하지 못해 객체보다 약간 위쪽 허공에서 그리퍼를 닫아버림.
+* **이론적 분석:** 3D 공간을 2D 이미지로 투영(Perspective Projection)하면 필연적으로 깊이 정보가 손실되는 **불량 조건 문제(Ill-posed Problem)**가 발생합니다. 명시적인 Depth 센서가 없는 RGB 전용 모델은 객체의 스케일(Scale) 변화, 렌즈 왜곡, 조명에 의한 그림자 등 간접적인 단서(Visual Cues)를 통해 $Z$축을 암묵적으로 추정(Implicit Depth Estimation)해야 합니다. 단 50개의 에피소드만으로는 이러한 기하학적 매핑 함수를 일반화하기에 데이터의 다양성이 절대적으로 부족했습니다.
+* **시사점:** 이 문제를 근본적으로 해결하기 위해서는 ZED X 등 스테레오 카메라를 활용하여 $Z$축 데이터를 명시적으로 주입(RGB-D)하는 것이 이상적입니다. 단, ACT 네트워크 구조 변경과 초근접 시 발생하는 Depth 센서 노이즈 필터링 등 하드웨어-소프트웨어 통합 레이어의 튜닝이 동반되어야 합니다. ACT Network 아키텍처 변경에 대해서는 Mobile ALOHA의 기본 ACT 백본(ResNet18)은 3채널(RGB) 입력에 맞춰져 있습니다. Depth를 추가하려면 첫 번째 합성곱 레이어(Conv1)를 4채널(RGB-D)로 수정하고 처음부터 가중치를 다시 학습시키거나, 별도의 Depth 인코더를 추가하는 등 PyTorch 코드 레벨의 수정이 필요합니다.
+
+### Case 3: 데이터 다양성을 통한 완전한 Pick & Place 성공 (100 Ep 모델)
+* **상황:** 100개 데이터(Target & Object 모두 랜덤 포함)로 학습된 모델. 두 객체의 위치를 모두 변경해도 정확하게 Pick & Place를 성공함.
+* **이론적 분석:** Phase 2의 추가 데이터가 모델의 시각적 어텐션을 복구했습니다. 목적지의 위치가 무작위로 변함에 따라, 로봇은 더 이상 관절 좌표의 암기만으로는 훈련 오차를 좁힐 수 없게 되었습니다. 또한, 100번의 다채로운 접근 궤적이 누적되면서 손목 카메라 영상에 나타나는 '객체 픽셀 크기의 비선형적 팽창'을 Transformer가 거리 데이터로 완벽히 치환 해석할 수 있게 되었습니다. 이는 데이터 스케일링이 RGB 모델의 3D 공간 지각력을 어떻게 향상시키는지를 증명합니다.
+* **시사점:** 데이터셋을 구성할 때 모든 변수(Pick 위치, Place 위치)를 처음부터 최고 난이도로 무작위화하면 모델이 학습 방향을 잃고 발산(Underfitting)할 가능성이 있어서, 본 테스트처럼 전체 데이터의 절반은 단일 변수(Pick 위치만 변경)로 구성하여 '파지(Grasp)'라는 기본 동작의 특징 추출(Feature Extraction)을 하게 하고, 나머지 절반에 다중 변수(모두 변경)를 섞어 모델이 적절히 수렵할 수 있도록 해줌. 데이터 수집 시, 로봇이 인지하고 상호작용해야 하는 모든 객체(목표물, 장애물 등)에 물리적 변동성(Randomization)을 부여해야만 모델이 올바른 시각적 인과관계를 학습.
+
+### Case 4: Closed_Loop 제어 기반의 Pick 재시도 성공 (100 Ep 모델)
+* **상황:** 초기 파지에 실패하여 빈 그리퍼로 닫혔으나, 그대로 허공에 Place하지 않고 다시 그리퍼를 열어 위치를 재조정한 뒤 인형을 완벽하게 파지하여 성공함.
+* **이론적 분석:** 개방 루프(Open-loop) 제어의 한계를 완벽히 벗어난 **시각적 Closed_Loop 제어(Visuomotor Closed-Loop Control)**의 발현입니다. 마르코프 결정 과정(MDP) 관점에서 초기 파지 실패 직후, 카메라에 입력된 "비어 있는 그리퍼와 테이블 위의 인형"이라는 새로운 상태($s_t$)가 현재 정책 $\pi(a_t|s_t)$를 즉각 업데이트했습니다. 특히 ACT 내부의 **CVAE (Conditional Variational Autoencoder)**가 시연자의 '실수 후 궤적 수정'이라는 비선형적 다중 모달리티(Multi-modality)를 잠재 공간(Latent Space)에 인코딩해 두었기 때문에, 에러 상황에서도 동적인 궤적 재생성이 가능했습니다.
+* **시사점:** 인간의 시연 데이터는 완벽할 필요가 없습니다. 오히려 미세한 실수와 복구 과정이 포함된 데모가 모델의 대응력을 높입니다. 단, One-shot 성공률 자체를 높이려면 Isaac Sim 기반의 대규모 합성 데이터(Synthetic Data)를 병합하여 Sim-to-Real 방식으로 상태 커버리지(State Coverage)를 극대화하는 접근이 필요합니다.
+
+### Case 5: 인지적 복구를 통한 OOD 극복 (100 Ep 모델)
+* **상황:** Pick 성공 후, Place 이동 중 엉뚱한 허공에 인형을 떨어뜨림. 그러나 로봇이 다시 바닥에 떨어진 인형의 위치를 재탐색하여 파지하고 올바른 흰색 그릇 위치에 Place를 성공함.
+* **이론적 분석:** Phase 1의 강력한 공간적 사전 지식(Spatial Prior)과 Phase 2의 시각적 사전 지식(Visual Prior)이 신경망 내에서 충돌(Competing Priors)하여 발생한 일시적 모드 붕괴입니다. 그러나 인형이 중간에 떨어져 분포 밖(OOD: Out-of-Distribution) 상태가 되었음에도, ResNet 백본이 학습한 강력한 Visiual Feature Extraction(Feature Extraction) 능력이 객체를 재인식해냈습니다. 이 과정에서 **시간적 앙상블(Temporal Ensembling)**이 무의미해진 과거의 Place 궤적 가중치를 빠르게 소멸시키고, 새로운 Pick 궤적을 부드럽게 오버레이(Overlay) 하였습니다.
+* **시사점:** 모델 내부의 사전 지식 충돌을 최소화하려면 비동기 추론 서버의 파라미터 최적화가 중요합니다. '--chunk_size_threshold'는 높이고, '--actions_per_chunk'는 낮춰서 과거 청크의 유효 수명을 줄이고, 가장 최근 시각적 프레임이 지배적인 권한을 갖도록 제어 로직을 튜닝해야 합니다.
+
+### Case 6: Feature Entanglement과 조명 강인성 (100 Ep 모델)
+* **상황:** 밝은 조명에서 Pick 성공 후 이동 중 로봇이 정지하여 Jittering 발생. 가림막을 씌워 조명을 데이터셋과 유사하게 덜 밝게 만들자 다시 이동하여 Place 성공.
+* **이론적 분석:** 합성곱 신경망(CNN)의 전형적인 **Feature Entanglement** 현상입니다. 모델은 객체의 위치 기하학(Geometry)과 픽셀의 절대적 조도(Illumination)를 독립 변수로 분리하지 못하고, "흰색 그릇이 이 위치에 있을 때는 조명이 항상 덜 밝았다"라는 편향을 학습했습니다. 이로 인해 밝은 조명 하에서 OOD 상태로 인식되었고, 극대화된 불확실성(Uncertainty)으로 인해 서로 상충하는 행동 청크들이 앙상블되어 상쇄(Cancellation)되면서 속도가 $0$에 수렴하는 Jittering 현상이 나타났습니다.
+* **시사점:** 모델이 조명의 절대값이라는 방해 요소(Distractor)를 무시하고 객체의 형태(Semantic Shape)에만 집중하도록 유도해야 합니다. 학습 과정에서 `ColorJitter` (밝기, 대비, 채도 무작위 변경)와 같은 **데이터 증강(Data Augmentation)** 기법을 필수적으로 적용하여 도메인 이동(Domain Shift)에 대한 모델의 강인성을 확보해야 합니다.
+
+---
+
+## 3. 결론 및 종합적 의의 (Conclusion & Future Perspectives)
+
+본 실습은 단순한 알고리즘 구동 확인을 넘어, 실물 로봇을 활용한 **물리적 AI(Physical AI)**의 실무 적용 가능성과 한계를 명확히 짚어주는 계기가 되었습니다. 테스트 및 검증을 통해 얻은 핵심 결론과 개인적 고찰, 그리고 시스템 고도화를 위한 향후 과제는 다음과 같습니다.
+
+### [1] 핵심 결론 및 기술적 의의
+* **전통적 제어 파이프라인 탈피 및 Physical AI 검증:** 기존의 '객체 인식(Vision) $\rightarrow$ 상태 추정(State Estimation) $\rightarrow$ 궤적 계획(Motion Planning) $\rightarrow$ 역기구학(Inverse Kinematics) 제어'라는 복잡한 직렬적 파이프라인 없이, 2D RGB 이미지와 Joint 데이터만으로 이루어진 **End-to-End 방식의 Vision-Action 매핑**이 어느 정도 동작함을 확인했습니다. 특히 예기치 못한 Abnormal Case(OOD)를 스스로 복구하는 Closed-Loop Control을 실물 하드웨어로 직접 검증해 낸 것은 의의가 있습니다.
+* **Data-Centric  방법론의 가능성 체감:** 모델 네트워크나 알고리즘 구조를 수정하지 않고도, **'데이터의 스케일(Scale), 분산(Variance) 설계, 그리고 커리큘럼(Curriculum)'**만으로 공간적 Overfitting이나 Feature Entanglement 같은 치명적인 에러를 극복 할 수 있다는 가능성을 확인하였습니다. 이는 향후 새로운 태스크 전이 학습(Transfer Learning) 시, 모델 튜닝뿐만 아니라 Data Collection에 대한 Pipeline Design의 중요성을 확인하였습니다.
+
+### [2] 아키텍처 및 인프라의 한계점 고찰
+* **VLA 모델로의 진화 필요성:** 현재 적용된 ACT 알고리즘은 Simple Task에 대해서는 준수한 성능을 보장한다고 알려져 있습니다. 하지만 Vision Backbone으로 CNN 기반의 ResNet을 사용하고 있어, Visiual Feature Extraction의 스케일업과 복잡한 환경 이해도에 태생적인 한계가 관찰됩니다. 향후 다양한 변수가 존재하는 Complex Task를 수행하기 위해서는, ViT(Vision Transformer)의 강력한 시각 인지와 거대 언어 모델이 결합된 **VLA (Vision-Language-Action) 모델** (예: Groot N1.X 등)로의 전환이 필수적일 것으로 판단됩니다.
+* **데이터 구축 파이프라인의 현실적 병목:** Data Quality와 Data Scale에 영향을 주는 시연자(Expert)의 숙련도와 Leader Device의 사용 편의성이 전체 파이프라인의 핵심 병목(Bottleneck)임을 체감했습니다. 향후 고도화된 AI를 위해서는 데이터 수집 및 액션 데이터 생성의 자동화/편의성 개선이 매우 중요해질 것입니다. 이는 최근 학계에서 Action Data 생성을 자동화하려는 연구들이 대두되는 맥락과 일치합니다.
+* **컴퓨팅 인프라의 제약:** 현재 실습 환경의 GPU Resource (VRAM 8GB) 제약으로 인해 데이터 처리(Data Processing) 규모와 모델 성능 최적화를 한계치까지 끌어올리는 데 어려움이 있었습니다. 향후 컴퓨팅 인프라가 확충된다면, Batch size 증가 및 고해상도 입력 처리, VLA 모델 적용 등을 통해 모델의 성능을 향상시킬 수 있을 것으로 기대됩니다.
+
+### [3] 향후 시스템 고도화 방안 (Action Items)
+이상의 고찰을 바탕으로, 현재의 Manipulation 모델을 실질적인 자동화 시스템으로 고도화하기 위해 다음의 단계를 수행합니다.
+
+1. **환경 강인성 확보 (Data Augmentation/Domain Randomization):** 조명 변화 및 카메라 노이즈에 대한 Overfitting 방지를 위해 LeRobot 학습 `config`에 `image_transforms` 파이프라인을 도입합니다.
+2. **비동기 추론 파라미터 최적화:** Jittering 및 지연 보상을 해결하기 위해, 실제 로봇 모터의 응답성에 맞춰 Action Chunking의 앙상블 가중치를 재조정합니다.
+
+---
+
+## Reference
+.. https://mobile-aloha.github.io/
+.. https://github.com/huggingface/lerobot
+.. https://research.nvidia.com/labs/gear/dreamgen/
+.. https://mimicgen.github.io/
+
+##
+##
+##
+
+
+# LeRobot 기반 OMX 로봇의 ACT 알고리즘 적용 및 Imitation Learning(Imitation Learning) 트러블슈팅 리뷰
+
 **목적:** 본 문서는 LeRobot 프레임워크와 실물 OMX 로봇을 활용하여 'Pick and Place' Task를 수행하는 과정에서 발생한 Imitation Learning(Imitation Learning)의 한계점과 극복 과정을 ACT(Action Chunking with Transformers) 알고리즘의 이론적 배경을 바탕으로 분석합니다.
 
 ## 1. 시스템 파이프라인 및 데이터 수집 전략
@@ -75,32 +159,32 @@
 
 ### Case 1: 공간적 Overfitting에 의한 Place 실패 (50 Ep 모델)
 * **상황:** 초기 50개 데이터로 학습된 모델. 추론 시 인형의 위치 변경에는 대응해 Pick을 성공했으나, 흰색 그릇(Goal)의 위치를 변경하자 시각적 위치를 무시하고 원래 그릇이 있던 '허공'에 인형을 놓음.
-* **심층 이론적 분석:** 딥러닝 모델은 목적 함수(Loss)를 최소화하기 위해 가장 쉬운 지름길(Shortcut Learning)을 택하는 본질적 특성을 갖습니다. 데이터셋 내에서 그릇의 위치 분산(Variance)이 $0$이었기 때문에, ACT의 Transformer 디코더는 카메라이미지 내 '그릇의 형태'에 어텐션(Attention) 가중치를 부여하는 대신, 로봇의 현재 관절 상태(Proprioception)와 시간의 흐름만으로 목표 좌표를 암기해버리는 **공간적 Overfitting(Spatial Overfitting)**을 일으켰습니다. 이는 인과관계(Causality)가 아닌 **허위 상관관계(Spurious Correlation)**가 학습된 전형적인 사례입니다.
+* **이론적 분석:** 딥러닝 모델은 목적 함수(Loss)를 최소화하기 위해 가장 쉬운 지름길(Shortcut Learning)을 택하는 본질적 특성을 갖습니다. 데이터셋 내에서 그릇의 위치 분산(Variance)이 $0$이었기 때문에, ACT의 Transformer 디코더는 카메라이미지 내 '그릇의 형태'에 어텐션(Attention) 가중치를 부여하는 대신, 로봇의 현재 관절 상태(Proprioception)와 시간의 흐름만으로 목표 좌표를 암기해버리는 **공간적 Overfitting(Spatial Overfitting)**을 일으켰습니다. 이는 인과관계(Causality)가 아닌 **허위 상관관계(Spurious Correlation)**가 학습된 전형적인 사례입니다.
 * **시사점:** 데이터 수집 환경을 설계할 때, 로봇이 인지하고 상호작용해야 하는 **모든 타겟 객체에는 반드시 물리적 위치 변동성(Randomization)을 부여**하여 Vision Backbone이 픽셀의 의미론적(Semantic) 특징을 강제로 추출하도록 유도해야 합니다.
 
 ### Case 2: 기하학적 모호성에 의한 Pick 조기 실패 (50 Ep 모델)
 * **상황:** 평면($X, Y$) 위치는 찾아갔으나, 깊이($Z$)를 정확히 파악하지 못해 객체보다 약간 위쪽 허공에서 그리퍼를 닫아버림.
-* **심층 이론적 분석:** 3D 공간을 2D 이미지로 투영(Perspective Projection)하면 필연적으로 깊이 정보가 손실되는 **불량 조건 문제(Ill-posed Problem)**가 발생합니다. 명시적인 Depth 센서가 없는 RGB 전용 모델은 객체의 스케일(Scale) 변화, 렌즈 왜곡, 조명에 의한 그림자 등 간접적인 단서(Visual Cues)를 통해 $Z$축을 암묵적으로 추정(Implicit Depth Estimation)해야 합니다. 단 50개의 에피소드만으로는 이러한 기하학적 매핑 함수를 일반화하기에 데이터의 다양성이 절대적으로 부족했습니다.
+* **이론적 분석:** 3D 공간을 2D 이미지로 투영(Perspective Projection)하면 필연적으로 깊이 정보가 손실되는 **불량 조건 문제(Ill-posed Problem)**가 발생합니다. 명시적인 Depth 센서가 없는 RGB 전용 모델은 객체의 스케일(Scale) 변화, 렌즈 왜곡, 조명에 의한 그림자 등 간접적인 단서(Visual Cues)를 통해 $Z$축을 암묵적으로 추정(Implicit Depth Estimation)해야 합니다. 단 50개의 에피소드만으로는 이러한 기하학적 매핑 함수를 일반화하기에 데이터의 다양성이 절대적으로 부족했습니다.
 * **시사점:** 이 문제를 근본적으로 해결하기 위해서는 ZED X 등 스테레오 카메라를 활용하여 $Z$축 데이터를 명시적으로 주입(RGB-D)하는 것이 이상적입니다. 단, ACT 네트워크 구조 변경과 초근접 시 발생하는 Depth 센서 노이즈 필터링 등 하드웨어-소프트웨어 통합 레이어의 튜닝이 동반되어야 합니다. ACT Network 아키텍처 변경에 대해서는 Mobile ALOHA의 기본 ACT 백본(ResNet18)은 3채널(RGB) 입력에 맞춰져 있습니다. Depth를 추가하려면 첫 번째 합성곱 레이어(Conv1)를 4채널(RGB-D)로 수정하고 처음부터 가중치를 다시 학습시키거나, 별도의 Depth 인코더를 추가하는 등 PyTorch 코드 레벨의 수정이 필요합니다.
 
 ### Case 3: 데이터 다양성을 통한 완전한 Pick & Place 성공 (100 Ep 모델)
 * **상황:** 100개 데이터(Target & Object 모두 랜덤 포함)로 학습된 모델. 두 객체의 위치를 모두 변경해도 정확하게 Pick & Place를 성공함.
-* **심층 이론적 분석:** Phase 2의 추가 데이터가 모델의 시각적 어텐션을 복구했습니다. 목적지의 위치가 무작위로 변함에 따라, 로봇은 더 이상 관절 좌표의 암기만으로는 훈련 오차를 좁힐 수 없게 되었습니다. 또한, 100번의 다채로운 접근 궤적이 누적되면서 손목 카메라 영상에 나타나는 '객체 픽셀 크기의 비선형적 팽창'을 Transformer가 거리 데이터로 완벽히 치환 해석할 수 있게 되었습니다. 이는 데이터 스케일링이 RGB 모델의 3D 공간 지각력을 어떻게 향상시키는지를 증명합니다.
+* **이론적 분석:** Phase 2의 추가 데이터가 모델의 시각적 어텐션을 복구했습니다. 목적지의 위치가 무작위로 변함에 따라, 로봇은 더 이상 관절 좌표의 암기만으로는 훈련 오차를 좁힐 수 없게 되었습니다. 또한, 100번의 다채로운 접근 궤적이 누적되면서 손목 카메라 영상에 나타나는 '객체 픽셀 크기의 비선형적 팽창'을 Transformer가 거리 데이터로 완벽히 치환 해석할 수 있게 되었습니다. 이는 데이터 스케일링이 RGB 모델의 3D 공간 지각력을 어떻게 향상시키는지를 증명합니다.
 * **시사점:** 데이터셋을 구성할 때 모든 변수(Pick 위치, Place 위치)를 처음부터 최고 난이도로 무작위화하면 모델이 학습 방향을 잃고 발산(Underfitting)할 가능성이 있어서, 본 테스트처럼 전체 데이터의 절반은 단일 변수(Pick 위치만 변경)로 구성하여 '파지(Grasp)'라는 기본 동작의 특징 추출(Feature Extraction)을 하게 하고, 나머지 절반에 다중 변수(모두 변경)를 섞어 모델이 적절히 수렵할 수 있도록 해줌. 데이터 수집 시, 로봇이 인지하고 상호작용해야 하는 모든 객체(목표물, 장애물 등)에 물리적 변동성(Randomization)을 부여해야만 모델이 올바른 시각적 인과관계를 학습.
 
 ### Case 4: Closed_Loop 제어 기반의 Pick 재시도 성공 (100 Ep 모델)
 * **상황:** 초기 파지에 실패하여 빈 그리퍼로 닫혔으나, 그대로 허공에 Place하지 않고 다시 그리퍼를 열어 위치를 재조정한 뒤 인형을 완벽하게 파지하여 성공함.
-* **심층 이론적 분석:** 개방 루프(Open-loop) 제어의 한계를 완벽히 벗어난 **시각적 Closed_Loop 제어(Visuomotor Closed-Loop Control)**의 발현입니다. 마르코프 결정 과정(MDP) 관점에서 초기 파지 실패 직후, 카메라에 입력된 "비어 있는 그리퍼와 테이블 위의 인형"이라는 새로운 상태($s_t$)가 현재 정책 $\pi(a_t|s_t)$를 즉각 업데이트했습니다. 특히 ACT 내부의 **CVAE (Conditional Variational Autoencoder)**가 시연자의 '실수 후 궤적 수정'이라는 비선형적 다중 모달리티(Multi-modality)를 잠재 공간(Latent Space)에 인코딩해 두었기 때문에, 에러 상황에서도 동적인 궤적 재생성이 가능했습니다.
+* **이론적 분석:** 개방 루프(Open-loop) 제어의 한계를 완벽히 벗어난 **시각적 Closed_Loop 제어(Visuomotor Closed-Loop Control)**의 발현입니다. 마르코프 결정 과정(MDP) 관점에서 초기 파지 실패 직후, 카메라에 입력된 "비어 있는 그리퍼와 테이블 위의 인형"이라는 새로운 상태($s_t$)가 현재 정책 $\pi(a_t|s_t)$를 즉각 업데이트했습니다. 특히 ACT 내부의 **CVAE (Conditional Variational Autoencoder)**가 시연자의 '실수 후 궤적 수정'이라는 비선형적 다중 모달리티(Multi-modality)를 잠재 공간(Latent Space)에 인코딩해 두었기 때문에, 에러 상황에서도 동적인 궤적 재생성이 가능했습니다.
 * **시사점:** 인간의 시연 데이터는 완벽할 필요가 없습니다. 오히려 미세한 실수와 복구 과정이 포함된 데모가 모델의 대응력을 높입니다. 단, One-shot 성공률 자체를 높이려면 Isaac Sim 기반의 대규모 합성 데이터(Synthetic Data)를 병합하여 Sim-to-Real 방식으로 상태 커버리지(State Coverage)를 극대화하는 접근이 필요합니다.
 
 ### Case 5: 인지적 복구를 통한 OOD 극복 (100 Ep 모델)
 * **상황:** Pick 성공 후, Place 이동 중 엉뚱한 허공에 인형을 떨어뜨림. 그러나 로봇이 다시 바닥에 떨어진 인형의 위치를 재탐색하여 파지하고 올바른 흰색 그릇 위치에 Place를 성공함.
-* **심층 이론적 분석:** Phase 1의 강력한 공간적 사전 지식(Spatial Prior)과 Phase 2의 시각적 사전 지식(Visual Prior)이 신경망 내에서 충돌(Competing Priors)하여 발생한 일시적 모드 붕괴입니다. 그러나 인형이 중간에 떨어져 분포 밖(OOD: Out-of-Distribution) 상태가 되었음에도, ResNet 백본이 학습한 강력한 Visiual Feature Extraction(Feature Extraction) 능력이 객체를 재인식해냈습니다. 이 과정에서 **시간적 앙상블(Temporal Ensembling)**이 무의미해진 과거의 Place 궤적 가중치를 빠르게 소멸시키고, 새로운 Pick 궤적을 부드럽게 오버레이(Overlay) 하였습니다.
+* **이론적 분석:** Phase 1의 강력한 공간적 사전 지식(Spatial Prior)과 Phase 2의 시각적 사전 지식(Visual Prior)이 신경망 내에서 충돌(Competing Priors)하여 발생한 일시적 모드 붕괴입니다. 그러나 인형이 중간에 떨어져 분포 밖(OOD: Out-of-Distribution) 상태가 되었음에도, ResNet 백본이 학습한 강력한 Visiual Feature Extraction(Feature Extraction) 능력이 객체를 재인식해냈습니다. 이 과정에서 **시간적 앙상블(Temporal Ensembling)**이 무의미해진 과거의 Place 궤적 가중치를 빠르게 소멸시키고, 새로운 Pick 궤적을 부드럽게 오버레이(Overlay) 하였습니다.
 * **시사점:** 모델 내부의 사전 지식 충돌을 최소화하려면 비동기 추론 서버의 파라미터 최적화가 중요합니다. '--chunk_size_threshold'는 높이고, '--actions_per_chunk'는 낮춰서 과거 청크의 유효 수명을 줄이고, 가장 최근 시각적 프레임이 지배적인 권한을 갖도록 제어 로직을 튜닝해야 합니다.
 
 ### Case 6: Feature Entanglement과 조명 강인성 (100 Ep 모델)
 * **상황:** 밝은 조명에서 Pick 성공 후 이동 중 로봇이 정지하여 Jittering 발생. 가림막을 씌워 조명을 데이터셋과 유사하게 덜 밝게 만들자 다시 이동하여 Place 성공.
-* **심층 이론적 분석:** 합성곱 신경망(CNN)의 전형적인 **Feature Entanglement** 현상입니다. 모델은 객체의 위치 기하학(Geometry)과 픽셀의 절대적 조도(Illumination)를 독립 변수로 분리하지 못하고, "흰색 그릇이 이 위치에 있을 때는 조명이 항상 덜 밝았다"라는 편향을 학습했습니다. 이로 인해 밝은 조명 하에서 OOD 상태로 인식되었고, 극대화된 불확실성(Uncertainty)으로 인해 서로 상충하는 행동 청크들이 앙상블되어 상쇄(Cancellation)되면서 속도가 $0$에 수렴하는 Jittering 현상이 나타났습니다.
+* **이론적 분석:** 합성곱 신경망(CNN)의 전형적인 **Feature Entanglement** 현상입니다. 모델은 객체의 위치 기하학(Geometry)과 픽셀의 절대적 조도(Illumination)를 독립 변수로 분리하지 못하고, "흰색 그릇이 이 위치에 있을 때는 조명이 항상 덜 밝았다"라는 편향을 학습했습니다. 이로 인해 밝은 조명 하에서 OOD 상태로 인식되었고, 극대화된 불확실성(Uncertainty)으로 인해 서로 상충하는 행동 청크들이 앙상블되어 상쇄(Cancellation)되면서 속도가 $0$에 수렴하는 Jittering 현상이 나타났습니다.
 * **시사점:** 모델이 조명의 절대값이라는 방해 요소(Distractor)를 무시하고 객체의 형태(Semantic Shape)에만 집중하도록 유도해야 합니다. 학습 과정에서 `ColorJitter` (밝기, 대비, 채도 무작위 변경)와 같은 **데이터 증강(Data Augmentation)** 기법을 필수적으로 적용하여 도메인 이동(Domain Shift)에 대한 모델의 강인성을 확보해야 합니다.
 
 ---
