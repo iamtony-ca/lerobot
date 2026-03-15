@@ -127,6 +127,8 @@
 
 ---
 
-### * 개인적이 느낀점
+### * 개인 의견 및 느낀점
 기존에 알고있던 이론적인 내용들을 실습을 통해 검증할 수 있었기에 의미가 있었음. 
 GPU Resource 한계로 Data Processing 및 Model 의 Performance 향상에 한계가 있었기 때문에, 추후, 더 좋은 GPU 사용이 가능하다면, Model 성능을 더 향상 시킬수 있을 것으로 기대됨.
+Simple task 에 대해서는 ACT 가 어느 정도 성능 보장이 되나, Complex Task 에 대해서는 Groot N1.X 와 같은 VLA 모델로 넘어가야 될 것으로 보임.
+ACT 는 Vision Backbone이 CNN기반인 Resnet 이므로, 최신 VLA 모델의 Vision Backbone(ViT) 과 비교할 때 Vision 측면에서 성능 상 한계점이 보임.
