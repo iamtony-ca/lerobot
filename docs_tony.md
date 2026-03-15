@@ -26,7 +26,7 @@
 ### Case 2: 기하학적 모호성에 의한 Pick 조기 실패 (50 Ep 모델)
 * **상황:** 평면($X, Y$) 위치는 찾아갔으나, 깊이($Z$)를 정확히 파악하지 못해 객체보다 약간 위쪽 허공에서 그리퍼를 닫아버림.
 * **이론적 분석:** 3D 공간을 2D 이미지로 투영(Perspective Projection)하면 필연적으로 깊이 정보가 손실되는 **불량 조건 문제(Ill-posed Problem)**가 발생합니다. 명시적인 Depth 센서가 없는 RGB 전용 모델은 객체의 스케일(Scale) 변화, 렌즈 왜곡, 조명에 의한 그림자 등 간접적인 단서(Visual Cues)를 통해 $Z$축을 암묵적으로 추정(Implicit Depth Estimation)해야 합니다. 단 50개의 에피소드만으로는 이러한 기하학적 매핑 함수를 일반화하기에 데이터의 다양성이 절대적으로 부족했습니다.
-* **시사점:** 이 문제를 근본적으로 해결하기 위해서는 ZED X 등 스테레오 카메라를 활용하여 $Z$축 데이터를 명시적으로 주입(RGB-D)하는 것이 이상적입니다. 단, ACT 네트워크 구조 변경과 초근접 시 발생하는 Depth 센서 노이즈 필터링 등 하드웨어-소프트웨어 통합 레이어의 튜닝이 동반되어야 합니다. ACT Network 아키텍처 변경에 대해서는 Mobile ALOHA의 기본 ACT 백본(ResNet18)은 3채널(RGB) 입력에 맞춰져 있습니다. Depth를 추가하려면 첫 번째 합성곱 레이어(Conv1)를 4채널(RGB-D)로 수정하고 처음부터 가중치를 다시 학습시키거나, 별도의 Depth 인코더를 추가하는 등 PyTorch 코드 레벨의 수정이 필요합니다.
+* **시사점:** 이 문제를 근본적으로 해결하기 위해서는 Depth 카메라를 활용하여 $Z$축 데이터를 명시적으로 주입(RGB-D)하는 것이 이상적입니다. 단, ACT Network 구조 변경과 초근접 시 발생하는 Depth 센서 노이즈 필터링 등 하드웨어-소프트웨어 통합 레이어의 튜닝이 동반되어야 합니다. ACT Network 아키텍처 변경에 대해서는 Mobile ALOHA의 기본 ACT Backbone(ResNet18)은 3채널(RGB) 입력에 맞춰져 있습니다. Depth를 추가하려면 첫 번째 합성곱 레이어(Conv1)를 4채널(RGB-D)로 수정하고 처음부터 가중치를 다시 학습시키거나, 별도의 Depth 인코더를 추가하는 등 PyTorch 코드 레벨의 수정이 필요할 수 있어서, ACT 말고, SVLA 혹은 Groot N1.x 혹은 Pi 모델을 검토해보는 것이 효율적 일수도 있습니다.
 
 ### Case 3: 데이터 다양성을 통한 완전한 Pick & Place 성공 (100 Ep 모델)
 * **상황:** 100개 데이터(Target & Object 모두 랜덤 포함)로 학습된 모델. 두 객체의 위치를 모두 변경해도 정확하게 Pick & Place를 성공함.
@@ -40,7 +40,7 @@
 
 ### Case 5: 인지적 복구를 통한 OOD 극복 (100 Ep 모델)
 * **상황:** Pick 성공 후, Place 이동 중 엉뚱한 허공에 인형을 떨어뜨림. 그러나 로봇이 다시 바닥에 떨어진 인형의 위치를 재탐색하여 파지하고 올바른 흰색 그릇 위치에 Place를 성공함.
-* **이론적 분석:** Phase 1의 강력한 공간적 사전 지식(Spatial Prior)과 Phase 2의 시각적 사전 지식(Visual Prior)이 신경망 내에서 충돌(Competing Priors)하여 발생한 일시적 모드 붕괴입니다. 그러나 인형이 중간에 떨어져 분포 밖(OOD: Out-of-Distribution) 상태가 되었음에도, ResNet 백본이 학습한 강력한 Visiual Feature Extraction(Feature Extraction) 능력이 객체를 재인식해냈습니다. 이 과정에서 **시간적 앙상블(Temporal Ensembling)**이 무의미해진 과거의 Place 궤적 가중치를 빠르게 소멸시키고, 새로운 Pick 궤적을 부드럽게 오버레이(Overlay) 하였습니다.
+* **이론적 분석:** Phase 1의 강력한 공간적 사전 지식(Spatial Prior)과 Phase 2의 시각적 사전 지식(Visual Prior)이 신경망 내에서 충돌(Competing Priors)하여 발생한 일시적 모드 붕괴입니다. 그러나 인형이 중간에 떨어져 분포 밖(OOD: Out-of-Distribution) 상태가 되었음에도, ResNet Backbone이 학습한 강력한 Visiual Feature Extraction(Feature Extraction) 능력이 객체를 재인식해냈습니다. 이 과정에서 **시간적 앙상블(Temporal Ensembling)**이 무의미해진 과거의 Place 궤적 가중치를 빠르게 소멸시키고, 새로운 Pick 궤적을 부드럽게 오버레이(Overlay) 하였습니다.
 * **시사점:** 모델 내부의 사전 지식 충돌을 최소화하려면 비동기 추론 서버의 파라미터 최적화가 중요합니다. '--chunk_size_threshold'는 높이고, '--actions_per_chunk'는 낮춰서 과거 청크의 유효 수명을 줄이고, 가장 최근 시각적 프레임이 지배적인 권한을 갖도록 제어 로직을 튜닝해야 합니다.
 
 ### Case 6: Feature Entanglement과 조명 강인성 (100 Ep 모델)
@@ -121,7 +121,7 @@
 
 ### Case 6: Feature Entanglement과 조명 강인성 (100 Ep 모델)
 * **상황:** 밝은 조명에서 Pick 성공 후 이동 중 로봇이 정지하여 Jittering 발생. 가림막을 씌워 조명을 데이터셋과 유사하게 덜 밝게 만들자 다시 이동하여 Place 성공.
-* **이론적 분석:** CNN 백본의 Feature Entanglement 현상입니다. 모델은 "흰색 그릇이 특정 위치에 있을 때는 조명이 덜 밝았다"는 편향을 학습했습니다. 밝은 조명이라는 OOD 상황에 직면하자 모델의 불확실성이 치솟았고, 상충하는 미래 궤적들이 시간적 앙상블을 거치며 제자리에서 떠는 Jittering을 유발했습니다. 가림막으로 시각적 컨텍스트(In-Distribution)를 복구하자 제어가 즉각 정상화되었습니다.
+* **이론적 분석:** CNN Backbone의 Feature Entanglement 현상입니다. 모델은 "흰색 그릇이 특정 위치에 있을 때는 조명이 덜 밝았다"는 편향을 학습했습니다. 밝은 조명이라는 OOD 상황에 직면하자 모델의 불확실성이 치솟았고, 상충하는 미래 궤적들이 시간적 앙상블을 거치며 제자리에서 떠는 Jittering을 유발했습니다. 가림막으로 시각적 컨텍스트(In-Distribution)를 복구하자 제어가 즉각 정상화되었습니다.
 * **해결책 및 시사점 (Data Augmentation):** LeRobot 프레임워크의 학습 설정(Config)에서 이미지 데이터 증강 기법을 적극 활용해야 합니다. `ColorJitter(brightness, contrast, saturation, hue)`를 적용하여 모델이 조명의 절대적인 밝기에 Overfitting되지 않고 객체의 기하학적 형태에만 집중하도록 유도해야 합니다.
 
 ## 3. 결론 및 향후 개선 과제
@@ -165,7 +165,7 @@
 ### Case 2: 기하학적 모호성에 의한 Pick 조기 실패 (50 Ep 모델)
 * **상황:** 평면($X, Y$) 위치는 찾아갔으나, 깊이($Z$)를 정확히 파악하지 못해 객체보다 약간 위쪽 허공에서 그리퍼를 닫아버림.
 * **이론적 분석:** 3D 공간을 2D 이미지로 투영(Perspective Projection)하면 필연적으로 깊이 정보가 손실되는 **불량 조건 문제(Ill-posed Problem)**가 발생합니다. 명시적인 Depth 센서가 없는 RGB 전용 모델은 객체의 스케일(Scale) 변화, 렌즈 왜곡, 조명에 의한 그림자 등 간접적인 단서(Visual Cues)를 통해 $Z$축을 암묵적으로 추정(Implicit Depth Estimation)해야 합니다. 단 50개의 에피소드만으로는 이러한 기하학적 매핑 함수를 일반화하기에 데이터의 다양성이 절대적으로 부족했습니다.
-* **시사점:** 이 문제를 근본적으로 해결하기 위해서는 ZED X 등 스테레오 카메라를 활용하여 $Z$축 데이터를 명시적으로 주입(RGB-D)하는 것이 이상적입니다. 단, ACT 네트워크 구조 변경과 초근접 시 발생하는 Depth 센서 노이즈 필터링 등 하드웨어-소프트웨어 통합 레이어의 튜닝이 동반되어야 합니다. ACT Network 아키텍처 변경에 대해서는 Mobile ALOHA의 기본 ACT 백본(ResNet18)은 3채널(RGB) 입력에 맞춰져 있습니다. Depth를 추가하려면 첫 번째 합성곱 레이어(Conv1)를 4채널(RGB-D)로 수정하고 처음부터 가중치를 다시 학습시키거나, 별도의 Depth 인코더를 추가하는 등 PyTorch 코드 레벨의 수정이 필요합니다.
+* **시사점:** 이 문제를 근본적으로 해결하기 위해서는 ZED X 등 스테레오 카메라를 활용하여 $Z$축 데이터를 명시적으로 주입(RGB-D)하는 것이 이상적입니다. 단, ACT 네트워크 구조 변경과 초근접 시 발생하는 Depth 센서 노이즈 필터링 등 하드웨어-소프트웨어 통합 레이어의 튜닝이 동반되어야 합니다. ACT Network 아키텍처 변경에 대해서는 Mobile ALOHA의 기본 ACT Backbone(ResNet18)은 3채널(RGB) 입력에 맞춰져 있습니다. Depth를 추가하려면 첫 번째 합성곱 레이어(Conv1)를 4채널(RGB-D)로 수정하고 처음부터 가중치를 다시 학습시키거나, 별도의 Depth 인코더를 추가하는 등 PyTorch 코드 레벨의 수정이 필요합니다.
 
 ### Case 3: 데이터 다양성을 통한 완전한 Pick & Place 성공 (100 Ep 모델)
 * **상황:** 100개 데이터(Target & Object 모두 랜덤 포함)로 학습된 모델. 두 객체의 위치를 모두 변경해도 정확하게 Pick & Place를 성공함.
@@ -179,7 +179,7 @@
 
 ### Case 5: 인지적 복구를 통한 OOD 극복 (100 Ep 모델)
 * **상황:** Pick 성공 후, Place 이동 중 엉뚱한 허공에 인형을 떨어뜨림. 그러나 로봇이 다시 바닥에 떨어진 인형의 위치를 재탐색하여 파지하고 올바른 흰색 그릇 위치에 Place를 성공함.
-* **이론적 분석:** Phase 1의 강력한 공간적 사전 지식(Spatial Prior)과 Phase 2의 시각적 사전 지식(Visual Prior)이 신경망 내에서 충돌(Competing Priors)하여 발생한 일시적 모드 붕괴입니다. 그러나 인형이 중간에 떨어져 분포 밖(OOD: Out-of-Distribution) 상태가 되었음에도, ResNet 백본이 학습한 강력한 Visiual Feature Extraction(Feature Extraction) 능력이 객체를 재인식해냈습니다. 이 과정에서 **시간적 앙상블(Temporal Ensembling)**이 무의미해진 과거의 Place 궤적 가중치를 빠르게 소멸시키고, 새로운 Pick 궤적을 부드럽게 오버레이(Overlay) 하였습니다.
+* **이론적 분석:** Phase 1의 강력한 공간적 사전 지식(Spatial Prior)과 Phase 2의 시각적 사전 지식(Visual Prior)이 신경망 내에서 충돌(Competing Priors)하여 발생한 일시적 모드 붕괴입니다. 그러나 인형이 중간에 떨어져 분포 밖(OOD: Out-of-Distribution) 상태가 되었음에도, ResNet Backbone이 학습한 강력한 Visiual Feature Extraction(Feature Extraction) 능력이 객체를 재인식해냈습니다. 이 과정에서 **시간적 앙상블(Temporal Ensembling)**이 무의미해진 과거의 Place 궤적 가중치를 빠르게 소멸시키고, 새로운 Pick 궤적을 부드럽게 오버레이(Overlay) 하였습니다.
 * **시사점:** 모델 내부의 사전 지식 충돌을 최소화하려면 비동기 추론 서버의 파라미터 최적화가 중요합니다. '--chunk_size_threshold'는 높이고, '--actions_per_chunk'는 낮춰서 과거 청크의 유효 수명을 줄이고, 가장 최근 시각적 프레임이 지배적인 권한을 갖도록 제어 로직을 튜닝해야 합니다.
 
 ### Case 6: Feature Entanglement과 조명 강인성 (100 Ep 모델)
@@ -304,7 +304,7 @@
 **Visiual Feature Extraction (Feature Extraction)**
 
 * **개념:** 복잡한 픽셀 데이터(배경, 사람, 책상 등) 속에서 태스크에 진짜 필요한 핵심 모양이나 색상 패턴만 걸러내는 과정입니다.
-* **테스트 적용:** ACT 내부의 ResNet 백본이 카메라 이미지를 보고, 뒤에 앉아있는 사람이나 커피컵은 무시한 채 **노란색 인형의 곡선 엣지(Edge)와 흰색 그릇의 픽셀 덩어리**만을 수학적인 숫자로 뽑아내는 작업입니다.
+* **테스트 적용:** ACT 내부의 ResNet Backbone이 카메라 이미지를 보고, 뒤에 앉아있는 사람이나 커피컵은 무시한 채 **노란색 인형의 곡선 엣지(Edge)와 흰색 그릇의 픽셀 덩어리**만을 수학적인 숫자로 뽑아내는 작업입니다.
 
 **특징 얽힘 (Feature Entanglement)**
 
