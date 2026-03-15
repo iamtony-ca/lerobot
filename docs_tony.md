@@ -35,9 +35,9 @@
 * **이론적 분석:** Phase 1(고정 Target)의 강력한 공간적 사전 지식(Spatial Prior)과 Phase 2(랜덤 Target)의 시각적 사전 지식(Visual Prior)이 추론 중 충돌하여 발생한 일시적 실수입니다. 하지만 인형이 애매한 중간에 떨어진 분포 밖(OOD: Out-of-Distribution) 상황에서도 로봇은 시각적 상태(빈 그리퍼, 떨어진 인형)를 즉각 수용하여 기존 Action Chunk를 폐기하고 새로운 최적 궤적을 샘플링하여 복구해냈습니다.
 * **해결책 및 시사점 (모드 충돌 완화):** 추론(Inference) 단계에서 과거 궤적이 현재의 올바른 예측을 방해하지 않도록 파라미터 미세 튜닝이 필요합니다. `--chunk_size_threshold`를 낮추거나 `aggregate_fn_name` 방식을 최적화하여, 가장 최근 카메라 프레임에서 예측된 신선한 행동(Fresh Action)에 더 높은 가중치를 부여함으로써 중간에 물건을 떨어뜨리는 사전 지식 충돌 현상을 방지할 수 있습니다.
 
-### Case 6: 특징 얽힘(Feature Entanglement)과 조명 강인성 (100 Ep 모델)
+### Case 6: Feature Entanglement과 조명 강인성 (100 Ep 모델)
 * **상황:** 밝은 조명에서 Pick 성공 후 이동 중 로봇이 정지하여 Jittering 발생. 가림막을 씌워 조명을 데이터셋과 유사하게 덜 밝게 만들자 다시 이동하여 Place 성공.
-* **이론적 분석:** CNN 백본의 특징 얽힘(Feature Entanglement) 현상입니다. 모델은 "흰색 그릇이 특정 위치에 있을 때는 조명이 덜 밝았다"는 편향을 학습했습니다. 밝은 조명이라는 OOD 상황에 직면하자 모델의 불확실성이 치솟았고, 상충하는 미래 궤적들이 시간적 앙상블을 거치며 제자리에서 떠는 Jittering을 유발했습니다. 가림막으로 시각적 컨텍스트(In-Distribution)를 복구하자 제어가 즉각 정상화되었습니다.
+* **이론적 분석:** CNN 백본의 Feature Entanglement 현상입니다. 모델은 "흰색 그릇이 특정 위치에 있을 때는 조명이 덜 밝았다"는 편향을 학습했습니다. 밝은 조명이라는 OOD 상황에 직면하자 모델의 불확실성이 치솟았고, 상충하는 미래 궤적들이 시간적 앙상블을 거치며 제자리에서 떠는 Jittering을 유발했습니다. 가림막으로 시각적 컨텍스트(In-Distribution)를 복구하자 제어가 즉각 정상화되었습니다.
 * **해결책 및 시사점 (Data Augmentation):** LeRobot 프레임워크의 학습 설정(Config)에서 이미지 데이터 증강 기법을 적극 활용해야 합니다. `ColorJitter(brightness, contrast, saturation, hue)`를 적용하여 모델이 조명의 절대적인 밝기에 Overfitting되지 않고 객체의 기하학적 형태에만 집중하도록 유도해야 합니다.
 
 ## 3. 결론 및 향후 개선 과제
@@ -98,9 +98,9 @@
 * **심층 이론적 분석:** Phase 1의 강력한 공간적 사전 지식(Spatial Prior)과 Phase 2의 시각적 사전 지식(Visual Prior)이 신경망 내에서 충돌(Competing Priors)하여 발생한 일시적 모드 붕괴입니다. 그러나 인형이 중간에 떨어져 분포 밖(OOD: Out-of-Distribution) 상태가 되었음에도, ResNet 백본이 학습한 강력한 Visiual Feature Extraction(Feature Extraction) 능력이 객체를 재인식해냈습니다. 이 과정에서 **시간적 앙상블(Temporal Ensembling)**이 무의미해진 과거의 Place 궤적 가중치를 빠르게 소멸시키고, 새로운 Pick 궤적을 부드럽게 오버레이(Overlay) 하였습니다.
 * **시사점:** 모델 내부의 사전 지식 충돌을 최소화하려면 비동기 추론 서버의 파라미터 최적화가 중요합니다. '--chunk_size_threshold'는 높이고, '--actions_per_chunk'는 낮춰서 과거 청크의 유효 수명을 줄이고, 가장 최근 시각적 프레임이 지배적인 권한을 갖도록 제어 로직을 튜닝해야 합니다.
 
-### Case 6: 특징 얽힘(Feature Entanglement)과 조명 강인성 (100 Ep 모델)
+### Case 6: Feature Entanglement과 조명 강인성 (100 Ep 모델)
 * **상황:** 밝은 조명에서 Pick 성공 후 이동 중 로봇이 정지하여 Jittering 발생. 가림막을 씌워 조명을 데이터셋과 유사하게 덜 밝게 만들자 다시 이동하여 Place 성공.
-* **심층 이론적 분석:** 합성곱 신경망(CNN)의 전형적인 **특징 얽힘(Feature Entanglement)** 현상입니다. 모델은 객체의 위치 기하학(Geometry)과 픽셀의 절대적 조도(Illumination)를 독립 변수로 분리하지 못하고, "흰색 그릇이 이 위치에 있을 때는 조명이 항상 덜 밝았다"라는 편향을 학습했습니다. 이로 인해 밝은 조명 하에서 OOD 상태로 인식되었고, 극대화된 불확실성(Uncertainty)으로 인해 서로 상충하는 행동 청크들이 앙상블되어 상쇄(Cancellation)되면서 속도가 $0$에 수렴하는 Jittering 현상이 나타났습니다.
+* **심층 이론적 분석:** 합성곱 신경망(CNN)의 전형적인 **Feature Entanglement** 현상입니다. 모델은 객체의 위치 기하학(Geometry)과 픽셀의 절대적 조도(Illumination)를 독립 변수로 분리하지 못하고, "흰색 그릇이 이 위치에 있을 때는 조명이 항상 덜 밝았다"라는 편향을 학습했습니다. 이로 인해 밝은 조명 하에서 OOD 상태로 인식되었고, 극대화된 불확실성(Uncertainty)으로 인해 서로 상충하는 행동 청크들이 앙상블되어 상쇄(Cancellation)되면서 속도가 $0$에 수렴하는 Jittering 현상이 나타났습니다.
 * **시사점:** 모델이 조명의 절대값이라는 방해 요소(Distractor)를 무시하고 객체의 형태(Semantic Shape)에만 집중하도록 유도해야 합니다. 학습 과정에서 `ColorJitter` (밝기, 대비, 채도 무작위 변경)와 같은 **데이터 증강(Data Augmentation)** 기법을 필수적으로 적용하여 도메인 이동(Domain Shift)에 대한 모델의 강인성을 확보해야 합니다.
 
 ---
@@ -122,7 +122,7 @@
 **1. 전통적 제어 파이프라인 탈피 및 Physical AI의 가능성 입증**
 기존의 매니퓰레이션은 '객체 인식(Vision) $\rightarrow$ 상태 추정(State Estimation) $\rightarrow$ 궤적 계획(Motion Planning) $\rightarrow$ 역기구학(Inverse Kinematics) 제어'라는 복잡한 직렬적 파이프라인을 거쳐야 했습니다. 본 테스트는 이러한 중간 과정 없이 2D RGB 이미지와 관절 데이터만으로 이루어진 **End-to-End 방식의 Vision-Action 매핑**만으로도, 예기치 못한 에러 상황을 스스로 복구하는 수준 높은 Closed-Loop Control가 가능함을 실물 로봇으로 입증했습니다. 이는 이론적 지식을 실제 하드웨어로 검증해 냈다는 점에서 큰 의미를 가집니다.
 
-**2. 데이터 중심(Data-Centric) 로보틱스 방법론의 체감**
+**2. 데이터 중심(Data-Centric) Robotics 방법론의 체감**
 모델의 네트워크 구조나 알고리즘을 수정하지 않고도, **'데이터의 품질, 분산(Variance) 설계, 그리고 커리큘럼'**만으로 치명적인 에러(공간적 Overfitting, 특징 얽힘 등)를 치유할 수 있음을 교차 검증했습니다. 향후 새로운 태스크를 로봇에게 전이 학습(Transfer Learning)시킬 때, 모델 튜닝보다 데이터 수집 시나리오 설계에 엔지니어링 역량을 집중해야 한다는 명확한 가이드라인을 확인했습니다.
 더불어 데이터의 스케일과 질(Quality)을 결정짓는 **시연자(Expert)의 역할과 Leader Device의 사용 편의성**이 데이터 구축 파이프라인의 핵심 병목이 될 것임을 체감했습니다. 이는 최근 학계에서 액션 데이터 생성을 자동화하려는 연구들이 대두되는 맥락과 정확히 일치합니다.
 
@@ -146,25 +146,22 @@
 
 ## 3. 결론 및 종합적 의의 (Conclusion & Future Perspectives)
 
-본 실습은 단순한 알고리즘 구동 확인을 넘어, 실물 로봇을 활용한 **물리적 AI(Physical AI)**의 실무 적용 가능성과 한계를 명확히 짚어주는 계기가 되었습니다. 테스트를 통해 얻은 핵심 결론과 개인적 고찰, 그리고 시스템 고도화를 위한 향후 과제는 다음과 같습니다.
+본 실습은 단순한 알고리즘 구동 확인을 넘어, 실물 로봇을 활용한 **물리적 AI(Physical AI)**의 실무 적용 가능성과 한계를 명확히 짚어주는 계기가 되었습니다. 테스트 및 검증을 통해 얻은 핵심 결론과 개인적 고찰, 그리고 시스템 고도화를 위한 향후 과제는 다음과 같습니다.
 
 ### [1] 핵심 결론 및 기술적 의의
-* **전통적 제어 파이프라인 탈피 및 Physical AI 검증:** 기존의 '객체 인식(Vision) $\rightarrow$ 상태 추정(State Estimation) $\rightarrow$ 궤적 계획(Motion Planning) $\rightarrow$ 역기구학(Inverse Kinematics) 제어'라는 복잡한 직렬적 파이프라인 없이, 2D RGB 이미지와 관절 데이터만으로 이루어진 **End-to-End 방식의 Vision-Action 매핑**이 성공적으로 동작함을 확인했습니다. 특히 예기치 못한 에러를 스스로 복구하는 수준 높은 Closed-Loop Control을 실물 하드웨어로 직접 검증해 낸 것은 큰 의의가 있습니다.
-* **Data-Centric 로보틱스 방법론의 강력함 체감:** 모델 네트워크나 알고리즘 구조를 수정하지 않고도, **'데이터의 스케일(Scale), 분산(Variance) 설계, 그리고 커리큘럼(Curriculum)'**만으로 공간적 Overfitting이나 특징 얽힘(Feature Entanglement) 같은 치명적인 에러를 치유할 수 있었습니다. 이는 향후 새로운 태스크 전이 학습(Transfer Learning) 시, 모델 튜닝보다 데이터 수집 시나리오 설계에 엔지니어링 역량을 집중해야 한다는 명확한 실무적 가이드라인을 제시합니다.
+* **전통적 제어 파이프라인 탈피 및 Physical AI 검증:** 기존의 '객체 인식(Vision) $\rightarrow$ 상태 추정(State Estimation) $\rightarrow$ 궤적 계획(Motion Planning) $\rightarrow$ 역기구학(Inverse Kinematics) 제어'라는 복잡한 직렬적 파이프라인 없이, 2D RGB 이미지와 Joint 데이터만으로 이루어진 **End-to-End 방식의 Vision-Action 매핑**이 어느 정도 동작함을 확인했습니다. 특히 예기치 못한 Abnormal Case(OOD)를 스스로 복구하는 Closed-Loop Control을 실물 하드웨어로 직접 검증해 낸 것은 의의가 있습니다.
+* **Data-Centric  방법론의 가능성 체감:** 모델 네트워크나 알고리즘 구조를 수정하지 않고도, **'데이터의 스케일(Scale), 분산(Variance) 설계, 그리고 커리큘럼(Curriculum)'**만으로 공간적 Overfitting이나 Feature Entanglement 같은 치명적인 에러를 극복 할 수 있다는 가능성을 확인하였습니다. 이는 향후 새로운 태스크 전이 학습(Transfer Learning) 시, 모델 튜닝뿐만 아니라 Data Collection에 대한 Pipeline Design의 중요성을 확인하였습니다.
 
 ### [2] 아키텍처 및 인프라의 한계점 고찰
 * **VLA 모델로의 진화 필요성:** 현재 적용된 ACT 알고리즘은 Simple Task에 대해서는 준수한 성능을 보장한다고 알려져 있습니다. 하지만 Vision Backbone으로 CNN 기반의 ResNet을 사용하고 있어, Visiual Feature Extraction의 스케일업과 복잡한 환경 이해도에 태생적인 한계가 관찰됩니다. 향후 다양한 변수가 존재하는 Complex Task를 수행하기 위해서는, ViT(Vision Transformer)의 강력한 시각 인지와 거대 언어 모델이 결합된 **VLA (Vision-Language-Action) 모델** (예: Groot N1.X 등)로의 전환이 필수적일 것으로 판단됩니다.
-* **데이터 구축 파이프라인의 현실적 병목:** Data Quality와 Data Scale에 영향을 주는 시연자(Expert)의 숙련도와 Leader Device의 사용 편의성이 전체 파이프라인의 핵심 병목(Bottleneck)임을 체감했습니다. 향후 고도화된 AI를 위해서는 데이터 수집 및 액션 데이터 생성의 자동화/편의성 개선이 매우 중요해질 것입니다. 이는 최근 학계에서 액션 데이터 생성을 자동화하려는 연구들이 대두되는 맥락과 일치합니다.
-* **컴퓨팅 인프라의 제약:** 현재 실습 환경의 GPU Resource (VRAM 8GB) 제약으로 인해 데이터 처리(Data Processing) 규모와 모델 성능 최적화를 한계치까지 끌어올리는 데 어려움이 있었습니다. 향후 컴퓨팅 인프라가 확충된다면, Batch size 증가 및 고해상도 입력 처리를 통해 모델의 성능을 획기적으로 향상시킬 수 있을 것으로 기대됩니다.
+* **데이터 구축 파이프라인의 현실적 병목:** Data Quality와 Data Scale에 영향을 주는 시연자(Expert)의 숙련도와 Leader Device의 사용 편의성이 전체 파이프라인의 핵심 병목(Bottleneck)임을 체감했습니다. 향후 고도화된 AI를 위해서는 데이터 수집 및 액션 데이터 생성의 자동화/편의성 개선이 매우 중요해질 것입니다. 이는 최근 학계에서 Action Data 생성을 자동화하려는 연구들이 대두되는 맥락과 일치합니다.
+* **컴퓨팅 인프라의 제약:** 현재 실습 환경의 GPU Resource (VRAM 8GB) 제약으로 인해 데이터 처리(Data Processing) 규모와 모델 성능 최적화를 한계치까지 끌어올리는 데 어려움이 있었습니다. 향후 컴퓨팅 인프라가 확충된다면, Batch size 증가 및 고해상도 입력 처리, VLA 모델 적용 등을 통해 모델의 성능을 향상시킬 수 있을 것으로 기대됩니다.
 
 ### [3] 향후 시스템 고도화 방안 (Action Items)
-이상의 고찰을 바탕으로, 현재의 매니퓰레이션 모델을 실질적인 자율 시스템으로 고도화하기 위해 다음의 단계를 수행합니다.
+이상의 고찰을 바탕으로, 현재의 Manipulation 모델을 실질적인 자동화 시스템으로 고도화하기 위해 다음의 단계를 수행합니다.
 
 1. **환경 강인성 확보 (Data Augmentation):** 조명 변화 및 카메라 노이즈에 대한 Overfitting 방지를 위해 LeRobot 학습 `config`에 `image_transforms` 파이프라인을 도입합니다.
 2. **비동기 추론 파라미터 최적화:** Jittering 및 지연 보상을 해결하기 위해, 실제 로봇 모터의 응답성에 맞춰 Action Chunking의 앙상블 가중치를 재조정합니다.
-3. **ROS 2 및 상위 제어기 통합:** 검증이 완료된 현재의 End-to-End 추론 모듈을 ROS 2 Action Server로 래핑하고, Nav2 자율 주행 및 BehaviorTree.CPP 기반의 상위 제어 트리와 유기적으로 통합하여 자율 이동과 조작이 결합된 모바일 매니퓰레이터 파이프라인을 완성합니다.
-
-
 
 
 ##
