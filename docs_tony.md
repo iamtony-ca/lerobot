@@ -128,9 +128,9 @@
 ---
 
 ### * 개인 의견 및 느낀점
-기존에 알고있던 이론적인 내용들을 실습을 통해 검증할 수 있었기에 의미가 있었으며, 추후 Physical AI기반 S/W 개발 시 방향성을 제시해줌.
-GPU Resource(VRAM 8.0) 한계로 Data Processing 및 Model 의 Performance 향상에 한계가 있었기 때문에, 추후, 더 좋은 GPU 사용이 가능하다면, Model 성능을 더 향상 시킬수 있을 것으로 기대됨.
-Simple task 에 대해서는 ACT 가 어느 정도 성능 보장이 되나, Complex Task 에 대해서는 Groot N1.X 와 같은 VLA 모델로 넘어가야 될 것으로 보임.
-ACT 는 Vision Backbone이 CNN기반인 Resnet 이므로, 최신 VLA 모델의 Vision Backbone(ViT) 과 비교할 때 Vision 측면에서 성능 상 한계점이 보임.
-Data Scale 과 Quality의 중요성이 보임. 또한, Leader Device 의 사용 편의성이 중요해질 것으로 보임. 더불어, Data Collection의 편의성 중요도 상승. (최근 연구에서는 Action Data 생성을 자동화하려는 방법론들도 나오는 중)
-Data Quality 측면에서는, Expert의 역할이 중요해 보임. (최근 AI관련 교수들 의견 중 하나는, 실제 복잡한 작업을 해왔던 숙련된 전문가들이 중요해질 수 있다는 의견이 있음.) 
+기존에 알고있던 이론적인 내용들을 실습을 통해 검증할 수 있었기에 의미가 있었으며, 추후 Physical AI기반 S/W 개발 시 방향성을 제시해줌.  
+GPU Resource(VRAM 8.0) 한계로 Data Processing 및 Model 의 Performance 향상에 한계가 있었기 때문에, 추후, 더 좋은 GPU 사용이 가능하다면, Model 성능을 더 향상 시킬수 있을 것으로 기대됨.  
+Simple task 에 대해서는 ACT 가 어느 정도 성능 보장이 되나, Complex Task 에 대해서는 Groot N1.X 와 같은 VLA 모델로 넘어가야 될 것으로 보임.  
+ACT 는 Vision Backbone이 CNN기반인 Resnet 이므로, 최신 VLA 모델의 Vision Backbone(ViT) 과 비교할 때 Vision 측면에서 성능 상 한계점이 보임.  
+Data Scale 과 Quality의 중요성이 보임. 또한, Leader Device 의 사용 편의성이 중요해질 것으로 보임. 더불어, Data Collection의 편의성 중요도 상승. (최근 연구에서는 Action Data 생성을 자동화하려는 방법론들도 나오는 중)  
+Data Quality 측면에서는, Expert의 역할이 중요해 보임. (최근 AI관련 교수들 의견 중 하나는, 실제 복잡한 작업을 해왔던 숙련된 전문가들이 중요해질 수 있다는 의견이 있음.)  
