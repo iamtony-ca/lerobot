@@ -160,7 +160,7 @@
 ### [3] 향후 시스템 고도화 방안 (Action Items)
 이상의 고찰을 바탕으로, 현재의 Manipulation 모델을 실질적인 자동화 시스템으로 고도화하기 위해 다음의 단계를 수행합니다.
 
-1. **환경 강인성 확보 (Data Augmentation):** 조명 변화 및 카메라 노이즈에 대한 Overfitting 방지를 위해 LeRobot 학습 `config`에 `image_transforms` 파이프라인을 도입합니다.
+1. **환경 강인성 확보 (Data Augmentation/Domain Randomization):** 조명 변화 및 카메라 노이즈에 대한 Overfitting 방지를 위해 LeRobot 학습 `config`에 `image_transforms` 파이프라인을 도입합니다.
 2. **비동기 추론 파라미터 최적화:** Jittering 및 지연 보상을 해결하기 위해, 실제 로봇 모터의 응답성에 맞춰 Action Chunking의 앙상블 가중치를 재조정합니다.
 
 
