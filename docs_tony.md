@@ -61,11 +61,11 @@
 
 ### [1] 핵심 결론 및 기술적 의의
 * **전통적 제어 파이프라인 탈피 및 Physical AI 검증:** 기존의 '객체 인식(Vision) $\rightarrow$ 상태 추정(State Estimation) $\rightarrow$ 궤적 계획(Motion Planning) $\rightarrow$ 역기구학(Inverse Kinematics) 제어'라는 복잡한 직렬적 파이프라인 없이, 2D RGB 이미지와 Joint 데이터만으로 이루어진 **End-to-End 방식의 Vision-Action 매핑**이 어느 정도 동작함을 확인했습니다. 특히 예기치 못한 Abnormal Case(OOD)를 스스로 복구하는 Closed-Loop Control을 실물 하드웨어로 직접 검증해 낸 것은 의의가 있습니다.
-* **Data-Centric  방법론의 가능성 체감:** 모델 네트워크나 알고리즘 구조를 수정하지 않고도, **'데이터의 스케일(Scale), 분산(Variance) 설계, 그리고 커리큘럼(Curriculum)'**만으로 공간적 Overfitting이나 Feature Entanglement 같은 치명적인 에러를 극복 할 수 있다는 가능성을 확인하였습니다. 이는 향후 새로운 태스크 전이 학습(Transfer Learning) 시, 모델 튜닝뿐만 아니라 Data Collection에 대한 Pipeline Design의 중요성을 확인하였습니다.
+* **Data-Centric  방법론의 가능성 확인:** 모델 네트워크나 알고리즘 구조를 수정하지 않고도, **'데이터의 스케일(Scale), 분산(Variance) 설계, 그리고 커리큘럼(Curriculum)'**만으로 공간적 Overfitting이나 Feature Entanglement 같은 치명적인 에러를 극복 할 수 있다는 가능성을 확인하였습니다. 이는 향후 새로운 태스크 전이 학습(Transfer Learning) 시, 모델 튜닝뿐만 아니라 Data Collection에 대한 Pipeline Design의 중요성을 확인하였습니다.
 
 ### [2] 아키텍처 및 인프라의 한계점 고찰
 * **VLA 모델로의 진화 필요성:** 현재 적용된 ACT 알고리즘은 Simple Task에 대해서는 준수한 성능을 보장한다고 알려져 있습니다. 하지만 Vision Backbone으로 CNN 기반의 ResNet을 사용하고 있어, Visiual Feature Extraction의 스케일업과 복잡한 환경 이해도에 태생적인 한계가 관찰됩니다. 향후 다양한 변수가 존재하는 Complex Task를 수행하기 위해서는, ViT(Vision Transformer)의 강력한 시각 인지와 거대 언어 모델이 결합된 **VLA (Vision-Language-Action) 모델** (예: Groot N1.X 등)로의 전환이 필수적일 것으로 판단됩니다.
-* **데이터 구축 파이프라인의 현실적 병목:** Data Quality와 Data Scale에 영향을 주는 시연자(Expert)의 숙련도와 Leader Device의 사용 편의성이 전체 파이프라인의 핵심 병목(Bottleneck)임을 체감했습니다. 향후 고도화된 AI를 위해서는 데이터 수집 및 액션 데이터 생성의 자동화/편의성 개선이 매우 중요해질 것입니다. 이는 최근 학계에서 Action Data 생성을 자동화하려는 연구들이 대두되는 맥락과 일치합니다.
+* **데이터 구축 파이프라인의 현실적 병목:** Data Quality와 Data Scale에 영향을 주는 시연자(Expert)의 숙련도와 Leader Device의 사용 편의성이 전체 파이프라인의 핵심 병목(Bottleneck)임을 확인했습니다. 향후 고도화된 AI를 위해서는 데이터 수집 및 액션 데이터 생성의 자동화/편의성 개선이 매우 중요해질 것입니다. 이는 최근 학계에서 Action Data 생성을 자동화하려는 연구들이 대두되는 맥락과 일치합니다.
 * **컴퓨팅 인프라의 제약:** 현재 실습 환경의 GPU Resource (VRAM 8GB) 제약으로 인해 데이터 처리(Data Processing) 규모와 모델 성능 최적화를 한계치까지 끌어올리는 데 어려움이 있었습니다. 향후 컴퓨팅 인프라가 확충된다면, Batch size 증가 및 고해상도 입력 처리, VLA 모델 적용 등을 통해 모델의 성능을 향상시킬 수 있을 것으로 기대됩니다.
 
 ### [3] 향후 시스템 고도화 방안 (Action Items)
@@ -211,9 +211,9 @@
 **1. 전통적 제어 파이프라인 탈피 및 Physical AI의 가능성 입증**
 기존의 매니퓰레이션은 '객체 인식(Vision) $\rightarrow$ 상태 추정(State Estimation) $\rightarrow$ 궤적 계획(Motion Planning) $\rightarrow$ 역기구학(Inverse Kinematics) 제어'라는 복잡한 직렬적 파이프라인을 거쳐야 했습니다. 본 테스트는 이러한 중간 과정 없이 2D RGB 이미지와 관절 데이터만으로 이루어진 **End-to-End 방식의 Vision-Action 매핑**만으로도, 예기치 못한 에러 상황을 스스로 복구하는 수준 높은 Closed-Loop Control가 가능함을 실물 로봇으로 입증했습니다. 이는 이론적 지식을 실제 하드웨어로 검증해 냈다는 점에서 큰 의미를 가집니다.
 
-**2. 데이터 중심(Data-Centric) Robotics 방법론의 체감**
+**2. 데이터 중심(Data-Centric) Robotics 방법론의 확인**
 모델의 네트워크 구조나 알고리즘을 수정하지 않고도, **'데이터의 품질, 분산(Variance) 설계, 그리고 커리큘럼'**만으로 치명적인 에러(공간적 Overfitting, 특징 얽힘 등)를 치유할 수 있음을 교차 검증했습니다. 향후 새로운 태스크를 로봇에게 전이 학습(Transfer Learning)시킬 때, 모델 튜닝보다 데이터 수집 시나리오 설계에 엔지니어링 역량을 집중해야 한다는 명확한 가이드라인을 확인했습니다.
-더불어 데이터의 스케일과 질(Quality)을 결정짓는 **시연자(Expert)의 역할과 Leader Device의 사용 편의성**이 데이터 구축 파이프라인의 핵심 병목이 될 것임을 체감했습니다. 이는 최근 학계에서 액션 데이터 생성을 자동화하려는 연구들이 대두되는 맥락과 정확히 일치합니다.
+더불어 데이터의 스케일과 질(Quality)을 결정짓는 **시연자(Expert)의 역할과 Leader Device의 사용 편의성**이 데이터 구축 파이프라인의 핵심 병목이 될 것임을 확인했습니다. 이는 최근 학계에서 액션 데이터 생성을 자동화하려는 연구들이 대두되는 맥락과 정확히 일치합니다.
 
 **3. 아키텍처의 한계 인식 및 VLA 모델로의 진화 필요성**
 현재 적용된 ACT 알고리즘은 단순한(Simple) 태스크에 대해서는 준수한 성능을 보장합니다. 하지만 Vision Backbone으로 CNN 기반의 ResNet을 사용하고 있어, Visiual Feature Extraction의 스케일업과 복잡한 환경 이해도에 태생적인 한계가 관찰됩니다. 향후 다양한 변수가 존재하는 Complex Task를 수행하기 위해서는, ViT(Vision Transformer)의 강력한 시각 인지와 거대 언어 모델이 결합된 **VLA (Vision-Language-Action) 모델** (예: Groot N1.X 등)로의 전환이 필수적일 것으로 판단됩니다.
@@ -239,11 +239,11 @@
 
 ### [1] 핵심 결론 및 기술적 의의
 * **전통적 제어 파이프라인 탈피 및 Physical AI 검증:** 기존의 '객체 인식(Vision) $\rightarrow$ 상태 추정(State Estimation) $\rightarrow$ 궤적 계획(Motion Planning) $\rightarrow$ 역기구학(Inverse Kinematics) 제어'라는 복잡한 직렬적 파이프라인 없이, 2D RGB 이미지와 Joint 데이터만으로 이루어진 **End-to-End 방식의 Vision-Action 매핑**이 어느 정도 동작함을 확인했습니다. 특히 예기치 못한 Abnormal Case(OOD)를 스스로 복구하는 Closed-Loop Control을 실물 하드웨어로 직접 검증해 낸 것은 의의가 있습니다.
-* **Data-Centric  방법론의 가능성 체감:** 모델 네트워크나 알고리즘 구조를 수정하지 않고도, **'데이터의 스케일(Scale), 분산(Variance) 설계, 그리고 커리큘럼(Curriculum)'**만으로 공간적 Overfitting이나 Feature Entanglement 같은 치명적인 에러를 극복 할 수 있다는 가능성을 확인하였습니다. 이는 향후 새로운 태스크 전이 학습(Transfer Learning) 시, 모델 튜닝뿐만 아니라 Data Collection에 대한 Pipeline Design의 중요성을 확인하였습니다.
+* **Data-Centric  방법론의 가능성 확인:** 모델 네트워크나 알고리즘 구조를 수정하지 않고도, **'데이터의 스케일(Scale), 분산(Variance) 설계, 그리고 커리큘럼(Curriculum)'**만으로 공간적 Overfitting이나 Feature Entanglement 같은 치명적인 에러를 극복 할 수 있다는 가능성을 확인하였습니다. 이는 향후 새로운 태스크 전이 학습(Transfer Learning) 시, 모델 튜닝뿐만 아니라 Data Collection에 대한 Pipeline Design의 중요성을 확인하였습니다.
 
 ### [2] 아키텍처 및 인프라의 한계점 고찰
 * **VLA 모델로의 진화 필요성:** 현재 적용된 ACT 알고리즘은 Simple Task에 대해서는 준수한 성능을 보장한다고 알려져 있습니다. 하지만 Vision Backbone으로 CNN 기반의 ResNet을 사용하고 있어, Visiual Feature Extraction의 스케일업과 복잡한 환경 이해도에 태생적인 한계가 관찰됩니다. 향후 다양한 변수가 존재하는 Complex Task를 수행하기 위해서는, ViT(Vision Transformer)의 강력한 시각 인지와 거대 언어 모델이 결합된 **VLA (Vision-Language-Action) 모델** (예: Groot N1.X 등)로의 전환이 필수적일 것으로 판단됩니다.
-* **데이터 구축 파이프라인의 현실적 병목:** Data Quality와 Data Scale에 영향을 주는 시연자(Expert)의 숙련도와 Leader Device의 사용 편의성이 전체 파이프라인의 핵심 병목(Bottleneck)임을 체감했습니다. 향후 고도화된 AI를 위해서는 데이터 수집 및 액션 데이터 생성의 자동화/편의성 개선이 매우 중요해질 것입니다. 이는 최근 학계에서 Action Data 생성을 자동화하려는 연구들이 대두되는 맥락과 일치합니다.
+* **데이터 구축 파이프라인의 현실적 병목:** Data Quality와 Data Scale에 영향을 주는 시연자(Expert)의 숙련도와 Leader Device의 사용 편의성이 전체 파이프라인의 핵심 병목(Bottleneck)임을 확인했습니다. 향후 고도화된 AI를 위해서는 데이터 수집 및 액션 데이터 생성의 자동화/편의성 개선이 매우 중요해질 것입니다. 이는 최근 학계에서 Action Data 생성을 자동화하려는 연구들이 대두되는 맥락과 일치합니다.
 * **컴퓨팅 인프라의 제약:** 현재 실습 환경의 GPU Resource (VRAM 8GB) 제약으로 인해 데이터 처리(Data Processing) 규모와 모델 성능 최적화를 한계치까지 끌어올리는 데 어려움이 있었습니다. 향후 컴퓨팅 인프라가 확충된다면, Batch size 증가 및 고해상도 입력 처리, VLA 모델 적용 등을 통해 모델의 성능을 향상시킬 수 있을 것으로 기대됩니다.
 
 ### [3] 향후 시스템 고도화 방안 (Action Items)
