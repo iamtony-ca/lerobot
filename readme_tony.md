@@ -90,7 +90,7 @@ cd ~/il_ws/src/lerobot && lerobot-record \
 --dataset.num_episodes=100 \
 --dataset.reset_time_s=10
 
-
+#### w resume
 HF_USER=$(hf auth whoami | head -n 1 | sed 's/\x1b\[[0-9;]*m//g' | awk -F': ' '{print $2}' | xargs)
 cd ~/il_ws/src/lerobot && lerobot-record \
 --robot.type=omx_follower \
@@ -123,16 +123,6 @@ pip install grpcio grpcio-tools
 
 ## train (act)
 lerobot-train \
---dataset.repo_id=${HF_USER}/record-test \
---policy.type=act \
---output_dir=outputs/train/omx_act_policy \
---job_name=act_record-test \
---policy.device=cuda \
---wandb.enable=true \
---policy.repo_id=${HF_USER}/omx_act_policy
-
-
-lerobot-train \
 --dataset.repo_id=${HF_USER}/pick_and_place \
 --policy.type=act \
 --output_dir=outputs/train/omx_act_policy \
@@ -142,32 +132,6 @@ lerobot-train \
 --policy.repo_id=${HF_USER}/omx_act_policy
 
 ### train w checkpoint
-lerobot-train \
---dataset.repo_id=${HF_USER}/record-test \
---policy.type=act \
---output_dir=outputs/train/omx_act_policy \
---job_name=act_record-test \
---policy.device=cuda \
---wandb.enable=true \
---policy.repo_id=${HF_USER}/omx_act_policy \
---batch_size=8 \
---save_checkpoint=true \
---save_freq=10000 \
---steps=100000
-
-lerobot-train \
---dataset.repo_id=${HF_USER}/pick_and_place_omx \
---policy.type=act \
---output_dir=outputs/train/omx_act_policy50 \
---job_name=act_pick_and_place_omx \
---policy.device=cuda \
---wandb.enable=true \
---policy.repo_id=${HF_USER}/omx_act_policy50 \
---batch_size=8 \
---save_checkpoint=true \
---save_freq=10000 \
---steps=100000
-
 rm -rf outputs/train/omx_act_policy50
 lerobot-train \
 --dataset.repo_id=${HF_USER}/pick_and_place_omx \
@@ -231,58 +195,11 @@ python -m lerobot.async_inference.robot_client \
 --policy_type=act \
 --pretrained_name_or_path=ruvit/omx_policy_3 \
 --policy_device=cuda \
---actions_per_chunk=100 \
---chunk_size_threshold=0.7 \
---aggregate_fn_name=weighted_average \
---debug_visualize_queue_size=True
-
-
-python -m lerobot.async_inference.robot_client \
---robot.type=omx_follower \
---robot.port=/dev/omx_follower \
---robot.id=omx_follower_arm \
---robot.cameras="{front: {type: opencv, index_or_path: 2, width: 640, height: 480, fps: 30, fourcc: MJPG}, wrist: {type: opencv, index_or_path: 4, width: 640, height: 480, fps: 30, fourcc: MJPG}}" \
---task=ruvit/omx_policy_3 \
---server_address=127.0.0.1:8000 \
---policy_type=act \
---pretrained_name_or_path=ruvit/omx_policy_3 \
---policy_device=cuda \
 --actions_per_chunk=70 \
 --chunk_size_threshold=0.6 \
 --aggregate_fn_name=weighted_average \
 --debug_visualize_queue_size=True
 
-
-python -m lerobot.async_inference.robot_client \
---robot.type=omx_follower \
---robot.port=/dev/omx_follower \
---robot.id=omx_follower_arm \
---robot.cameras="{front: {type: opencv, index_or_path: 2, width: 640, height: 480, fps: 30, fourcc: MJPG}, wrist: {type: opencv, index_or_path: 4, width: 640, height: 480, fps: 30, fourcc: MJPG}}" \
---task="Pick up Doll" \
---server_address=127.0.0.1:8000 \
---policy_type=act \
---pretrained_name_or_path=${HF_USER}/omx_act_policy50 \
---policy_device=cuda \
---actions_per_chunk=70 \
---chunk_size_threshold=0.6 \
---aggregate_fn_name=weighted_average \
---debug_visualize_queue_size=True
-
-
-python -m lerobot.async_inference.robot_client \
---robot.type=omx_follower \
---robot.port=/dev/omx_follower \
---robot.id=omx_follower_arm \
---robot.cameras="{front: {type: opencv, index_or_path: 2, width: 640, height: 480, fps: 30, fourcc: MJPG}, wrist: {type: opencv, index_or_path: 4, width: 640, height: 480, fps: 30, fourcc: MJPG}}" \
---task=${HF_USER}/omx_act_policy50_2 \
---server_address=127.0.0.1:8000 \
---policy_type=act \
---pretrained_name_or_path=${HF_USER}/omx_act_policy50_2 \
---policy_device=cuda \
---actions_per_chunk=70 \
---chunk_size_threshold=0.6 \
---aggregate_fn_name=weighted_average \
---debug_visualize_queue_size=True
 
 
 #### succeed inference
