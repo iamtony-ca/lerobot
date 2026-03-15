@@ -115,7 +115,7 @@ lerobot-replay \
 --robot.type=omx_follower \
 --robot.port=/dev/ttyACM0 \
 --robot.id=omx_follower_arm \
---dataset.repo_id=iamtony-ca/pick_and_place \
+--dataset.repo_id=${HF_USER}/pick_and_place \
 --dataset.episode=3
 
 
@@ -123,23 +123,23 @@ pip install grpcio grpcio-tools
 
 ## train (act)
 lerobot-train \
---dataset.repo_id=iamtony-ca/record-test \
+--dataset.repo_id=${HF_USER}/record-test \
 --policy.type=act \
 --output_dir=outputs/train/omx_act_policy \
 --job_name=act_record-test \
 --policy.device=cuda \
 --wandb.enable=true \
---policy.repo_id=iamtony-ca/omx_act_policy
+--policy.repo_id=${HF_USER}/omx_act_policy
 
 
 lerobot-train \
---dataset.repo_id=iamtony-ca/pick_and_place \
+--dataset.repo_id=${HF_USER}/pick_and_place \
 --policy.type=act \
 --output_dir=outputs/train/omx_act_policy \
 --job_name=act_pick_and_place \
 --policy.device=cuda \
 --wandb.enable=true \
---policy.repo_id=iamtony-ca/omx_act_policy
+--policy.repo_id=${HF_USER}/omx_act_policy
 
 ### train w checkpoint
 lerobot-train \
@@ -261,7 +261,7 @@ python -m lerobot.async_inference.robot_client \
 --task="Pick up Doll" \
 --server_address=127.0.0.1:8000 \
 --policy_type=act \
---pretrained_name_or_path=iamtony-ca/omx_act_policy50 \
+--pretrained_name_or_path=${HF_USER}/omx_act_policy50 \
 --policy_device=cuda \
 --actions_per_chunk=70 \
 --chunk_size_threshold=0.6 \
